@@ -5,6 +5,7 @@ Integration test to programmatically verify JWFileFilterGUI and SRP modules.
 """
 
 import tkinter as tk
+from tkinterdnd2 import TkinterDnD
 import tempfile
 from pathlib import Path
 import os
@@ -45,7 +46,7 @@ def test_gui_integration():
         print(f" - {img3.name} (size: {img3.stat().st_size}, mtime: {img3.stat().st_mtime})")
         
         # 3. Instantiate Tk and the GUI class
-        root = tk.Tk()
+        root = TkinterDnD.Tk()
         # Withdraw the root window so it doesn't pop up on the screen during tests
         root.withdraw()
         
