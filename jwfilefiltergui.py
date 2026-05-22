@@ -2,21 +2,26 @@
 # -*- coding: utf-8 -*-
 """
 JWFileFilter - 사진과 동영상 파일 관리 프로그램
-메인 GUI 애플리케이션
+메인 GUI 애플리케이션 (SRP 적용 리팩토링 버전)
 """
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
-import shutil
 from pathlib import Path
 from datetime import datetime
-import mimetypes
-from PIL import Image, ImageTk
-import hashlib
-from collections import defaultdict
+from PIL import ImageTk
+
+# 분리된 SRP 모듈 임포트
+from file_util import format_file_size
+from duplicate_finder import DuplicateFinder
+from image_processor import ImageProcessor
 
 class JWFileFilterGUI:
+    """
+    JWFileFilter의 사용자 인터페이스(UI) 및 상호작용을 담당하는 클래스.
+    """
+    
     def __init__(self, root):
         self.root = root
         self.root.title("JWFileFilter - 파일 관리자")
@@ -26,9 +31,8 @@ class JWFileFilterGUI:
         # 현재 작업 디렉토리
         self.current_dir = tk.StringVar(value=os.getcwd())
         
-        # 지원하는 파일 확장자
-        self.image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
-        self.video_extensions = {'.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'}
+        # 중복 파일 탐색기 인스턴스 생성
+        self.finder = DuplicateFinder()
         
         # 중복 파일 관련 변수
         self.duplicate_pairs = []
@@ -141,7 +145,6 @@ class JWFileFilterGUI:
         # 중복 파일 선택 이벤트
         self.duplicate_tree.bind('<<TreeviewSelect>>', self.on_duplicate_select)
         
-        
         # 액션 버튼 프레임
         action_frame = ttk.Frame(main_frame)
         action_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -177,29 +180,13 @@ class JWFileFilterGUI:
             self.refresh_file_list()
             
     def refresh_file_list(self):
-        """파일 목록 새로고침"""
-        # 파일 목록이 제거되었으므로 이 함수는 더 이상 필요하지 않음
+        """파일 목록 새로고침 (기존 동작 호환용 빈 메서드)"""
         pass
     
-    def format_file_size(self, size_bytes):
-        """파일 크기를 읽기 쉬운 형태로 변환"""
-        if size_bytes == 0:
-            return "0 B"
-        
-        size_names = ["B", "KB", "MB", "GB", "TB"]
-        i = 0
-        while size_bytes >= 1024 and i < len(size_names) - 1:
-            size_bytes /= 1024.0
-            i += 1
-        
-        return f"{size_bytes:.1f} {size_names[i]}"
-    
     def get_selected_files(self):
-        """선택된 파일들의 경로 반환"""
-        # 파일 목록이 제거되었으므로 빈 리스트 반환
+        """선택된 파일들의 경로 반환 (기존 동작 호환용 빈 메서드)"""
         return []
-    
-    
+        
     def find_duplicates(self):
         """중복 파일 검색"""
         try:
@@ -211,42 +198,14 @@ class JWFileFilterGUI:
                 self.status_var.set("디렉토리가 존재하지 않습니다.")
                 return
             
-            # 모든 파일 수집
-            all_files = []
-            if self.recursive_search.get():
-                for file_path in current_path.rglob('*'):
-                    if file_path.is_file() and file_path.suffix.lower() in self.image_extensions:
-                        all_files.append(file_path)
-            else:
-                for file_path in current_path.iterdir():
-                    if file_path.is_file() and file_path.suffix.lower() in self.image_extensions:
-                        all_files.append(file_path)
-            
-            # 파일 정보 수집 (크기, 수정일 기준)
-            file_groups = defaultdict(list)
-            for file_path in all_files:
-                try:
-                    stat = file_path.stat()
-                    # 파일 크기와 수정일을 기준으로 그룹화 (시간 허용 오차: 1초)
-                    time_key = round(stat.st_mtime)
-                    key = (stat.st_size, time_key)
-                    file_groups[key].append(file_path)
-                except Exception:
-                    continue
-            
-            # 중복 파일 페어 찾기
-            self.duplicate_pairs = []
-            print(f"총 {len(all_files)}개 파일 검사 중...")
-            
-            for key, files in file_groups.items():
-                if len(files) > 1:
-                    print(f"같은 크기/시간 그룹: {len(files)}개 파일")
-                    # 같은 크기와 수정일을 가진 파일들을 페어로 만들기 (파일명 무관)
-                    for i in range(len(files)):
-                        for j in range(i + 1, len(files)):
-                            # 파일 크기와 수정일이 같으면 중복으로 간주 (파일명 무관)
-                            print(f"중복 발견: {files[i].name} <-> {files[j].name}")
-                            self.duplicate_pairs.append((files[i], files[j]))
+            # DuplicateFinder를 호출하여 파일 스캔 및 비교 수행
+            self.duplicate_pairs = self.finder.find_duplicates(
+                dir_path=current_path,
+                show_images=self.show_images.get(),
+                show_videos=self.show_videos.get(),
+                show_others=self.show_others.get(),
+                recursive=self.recursive_search.get()
+            )
             
             # 중복 파일 목록 업데이트
             self.update_duplicate_list()
@@ -264,7 +223,6 @@ class JWFileFilterGUI:
             self.status_var.set(f"오류: {str(e)}")
             messagebox.showerror("오류", f"중복 파일 검색 중 오류가 발생했습니다:\n{str(e)}")
     
-    
     def update_duplicate_list(self):
         """중복 파일 목록 업데이트"""
         # 기존 항목 제거
@@ -277,8 +235,8 @@ class JWFileFilterGUI:
                 stat1 = file1.stat()
                 stat2 = file2.stat()
                 
-                size1 = self.format_file_size(stat1.st_size)
-                size2 = self.format_file_size(stat2.st_size)
+                size1 = format_file_size(stat1.st_size)
+                size2 = format_file_size(stat2.st_size)
                 date1 = datetime.fromtimestamp(stat1.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
                 date2 = datetime.fromtimestamp(stat2.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
                 
@@ -315,23 +273,16 @@ class JWFileFilterGUI:
         file1, file2 = self.duplicate_pairs[self.current_pair_index]
         self.load_image_to_viewer(file1, self.image_viewer1)
         self.load_image_to_viewer(file2, self.image_viewer2)
+        
+        # 체크박스 초기화
+        self.checkbox1.set(False)
+        self.checkbox2.set(False)
     
     def load_image_to_viewer(self, file_path, viewer):
         """이미지를 뷰어에 로드 (보다 크게 표시)"""
         try:
-            image = Image.open(file_path)
-            
-            # 최대 표시 크기 (FullHD 기준, 좌우 2장 배치)
-            max_width = 550
-            max_height = 600
-            
-            # 원본 비율 유지하면서 리사이즈
-            img_width, img_height = image.size
-            scale = min(max_width / img_width, max_height / img_height, 1.0)
-            new_width = int(img_width * scale)
-            new_height = int(img_height * scale)
-            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+            # ImageProcessor를 호출하여 이미지 로딩 및 리사이즈 수행
+            image = ImageProcessor.load_and_scale_image(file_path, max_width=550, max_height=600)
             photo = ImageTk.PhotoImage(image)
             
             viewer.configure(image=photo, text="")
@@ -346,6 +297,8 @@ class JWFileFilterGUI:
         self.image_viewer2.configure(image="", text="이미지 2")
         self.image_viewer1.image = None
         self.image_viewer2.image = None
+        self.checkbox1.set(False)
+        self.checkbox2.set(False)
     
     def delete_selected_files(self):
         """체크된 파일들 삭제"""
@@ -365,8 +318,8 @@ class JWFileFilterGUI:
         
         if messagebox.askyesno("확인", f"{len(files_to_delete)}개 파일을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다."):
             try:
-                for file_path in files_to_delete:
-                    os.remove(file_path)
+                # DuplicateFinder를 호출하여 파일 삭제 수행
+                self.finder.delete_files(files_to_delete)
                 
                 # 중복 파일 목록 새로고침
                 self.find_duplicates()
