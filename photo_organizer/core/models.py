@@ -36,6 +36,7 @@ class PhotoGroup:
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     event_name: Optional[str] = None  # User-provided or auto-generated
+    overseas_countries: set = field(default_factory=set)  # 해외 방문 국가들 (다중 국가 지원)
 
     def add_photo(self, photo: PhotoMetadata):
         self.photos.append(photo)
@@ -49,21 +50,12 @@ class PhotoGroup:
 
     @property
     def folder_name(self) -> str:
-        """Generate folder name like 231119_이월드나들이 or 20220504_20220506_서울나들이"""
+        """Generate folder name using event_name (e.g. 20190628_0706_싱가포르_여행)"""
+        if self.event_name:
+            return self.event_name
         if not self.start_date:
             return "unknown_date"
-
-        start_str = self.start_date.strftime("%y%m%d")
-        
-        if self.end_date and self.end_date.date() != self.start_date.date():
-            end_str = self.end_date.strftime("%Y%m%d")
-            base = f"{start_str}_{end_str}"
-        else:
-            base = start_str
-
-        # Use location-based name if available
-        name_part = self.event_name or 'event'
-        return f"{base}_{name_part}"
+        return self.start_date.strftime("%Y%m%d") + "_event"
 
 
 @dataclass

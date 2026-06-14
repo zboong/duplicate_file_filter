@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None  # 대용량 이미지 허용 (DecompressionBombWarning 방지)
 from PIL.ExifTags import TAGS
 import exifread
 

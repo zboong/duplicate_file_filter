@@ -8,6 +8,7 @@ from collections import defaultdict
 try:
     import imagehash
     from PIL import Image
+    Image.MAX_IMAGE_PIXELS = None  # 대용량 이미지 허용 (DecompressionBombWarning 방지)
     HAS_PERCEPTUAL = True
 except ImportError:
     HAS_PERCEPTUAL = False
