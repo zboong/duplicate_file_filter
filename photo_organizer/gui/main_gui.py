@@ -251,9 +251,11 @@ class PhotoOrganizerGUI:
                 self.root.update_idletasks()
                 self.preview_text.insert(tk.END, f"총 {len(self.photos)}장 발견\n\n")
                 
-                self.groups = group_photos_by_time(self.photos, self.time_gap_var.get())
-                assign_event_names(self.groups, self.config.grouping.default_event_name)
+                all_groups = group_photos_by_time(self.photos, self.time_gap_var.get())
+                assign_event_names(all_groups, self.config.grouping.default_event_name)
                 
+                # event_name이 있는 그룹만 필터링하여 self.groups에 저장
+                self.groups = [g for g in all_groups if g.event_name and g.start_date]
                 for group in self.groups[:10]:
                     self.preview_text.insert(tk.END, f"📁 {group.folder_name} ({len(group.photos)}장)\n")
                     for i, photo in enumerate(group.photos[:3]):

@@ -52,8 +52,9 @@ def copy_with_confirmation(
     Copy photos to target directory with year-based folder structure.
     """
     print("\n=== 정리 계획 미리보기 ===")
+    classified = [g for g in groups if g.event_name and g.start_date]
     total = 0
-    for group in groups:
+    for group in classified:
         folder_name = group.folder_name
         print(f"\n📁 {folder_name}/ ({len(group.photos)}장)")
         for i, photo in enumerate(group.photos[:3]):
@@ -63,7 +64,7 @@ def copy_with_confirmation(
             print(f"   ... 외 {len(group.photos)-3}장")
         total += len(group.photos)
     
-    print(f"\n총 {len(groups)}개 이벤트, {total}장 사진")
+    print(f"\n총 {len(classified)}개 이벤트, {total}장 사진")
     if dry_run:
         print("\n[DRY-RUN] 실제 복사는 수행되지 않습니다.")
         return
