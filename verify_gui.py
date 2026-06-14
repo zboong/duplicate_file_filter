@@ -53,8 +53,8 @@ def test_gui_integration():
         app = JWFileFilterGUI(root)
         
         # Set the directory in the GUI
-        app.current_dir.set(str(temp_dir))
-        print(f"Set current directory in GUI: {app.current_dir.get()}")
+        app.target_dirs = [str(temp_dir)]
+        print(f"Set target directories in GUI: {app.target_dirs}")
         
         # Set filters
         app.show_images.set(True)
@@ -94,15 +94,26 @@ def test_gui_integration():
         app.checkbox2.set(False)
         
         # Mock messagebox.askyesno to automatically return True
-        old_askyesno = tk.messagebox.askyesno
-        tk.messagebox.askyesno = lambda title, message: True
+        import jwfilefiltergui
+        import tkinter.messagebox
+        
+        def mock_askyesno(title, message):
+            print(f"MOCK: askyesno called with: {title} - {message}")
+            return True
+            
+        old_askyesno = jwfilefiltergui.messagebox.askyesno
+        jwfilefiltergui.messagebox.askyesno = mock_askyesno
+        tkinter.messagebox.askyesno = mock_askyesno
         
         # Simulate clicking "선택된 파일 삭제"
         print("Simulating deletion of selected files...")
+        # Ensure the pair is selected and index is 0
+        app.current_pair_index = 0
         app.delete_selected_files()
         
         # Restore messagebox
-        tk.messagebox.askyesno = old_askyesno
+        jwfilefiltergui.messagebox.askyesno = old_askyesno
+        tkinter.messagebox.askyesno = old_askyesno
         
         # 8. Verify photo1 was deleted, and duplicate list was updated (should be empty now)
         print("Verifying deletion outcome...")
