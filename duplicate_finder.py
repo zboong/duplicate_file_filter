@@ -24,53 +24,59 @@ class DuplicateFinder:
 
     def find_duplicates(
         self, 
-        dir_path: Path, 
+        dir_paths: List[Path], 
         show_images: bool, 
         show_videos: bool, 
         show_others: bool, 
-        recursive: bool
+        recursive: bool,
+        progress_callback=None
     ) -> List[Tuple[Path, Path]]:
         """
-        Scan the given directory and find duplicate file pairs.
+        Scan the given directories and find duplicate file pairs.
         
         Args:
-            dir_path: Path to the directory to scan.
+            dir_paths: List of paths to the directories to scan.
             show_images: Whether to scan image files.
             show_videos: Whether to scan video files.
             show_others: Whether to scan other file types.
             recursive: Whether to scan subdirectories recursively.
+            progress_callback: Optional callback function that receives the path of the current file being scanned.
             
         Returns:
             A list of tuples, each containing a pair of Path objects that are duplicate.
         """
-        if not dir_path.exists() or not dir_path.is_dir():
-            return []
-
-        all_files = []
+        all_files_set = set()
         search_pattern = '**/*' if recursive else '*'
         
-        for file_path in dir_path.glob(search_pattern):
-            if not file_path.is_file():
+        for dir_path in dir_paths:
+            if not dir_path.exists() or not dir_path.is_dir():
                 continue
-            
-            # Exclude standard environment/configuration folders to prevent performance lags and noise
-            try:
-                rel_parts = file_path.relative_to(dir_path).parts
-                if any(part.startswith('.') or part in ('venv', 'env', 'ENV', '__pycache__', 'node_modules') for part in rel_parts):
+
+            for file_path in dir_path.glob(search_pattern):
+                if not file_path.is_file():
                     continue
-            except ValueError:
-                pass
                 
-            suffix = file_path.suffix.lower()
-            is_image = suffix in self.image_extensions
-            is_video = suffix in self.video_extensions
-            
-            if is_image and show_images:
-                all_files.append(file_path)
-            elif is_video and show_videos:
-                all_files.append(file_path)
-            elif not is_image and not is_video and show_others:
-                all_files.append(file_path)
+                if progress_callback:
+                    progress_callback(str(file_path))
+                
+                # Exclude standard environment/configuration folders to prevent performance lags and noise
+                try:
+                    rel_parts = file_path.relative_to(dir_path).parts
+                    if any(part.startswith('.') or part in ('venv', 'env', 'ENV', '__pycache__', 'node_modules') for part in rel_parts):
+                        continue
+                except ValueError:
+                    pass
+                    
+                suffix = file_path.suffix.lower()
+                is_image = suffix in self.image_extensions
+                is_video = suffix in self.video_extensions
+                
+                if (is_image and show_images) or \
+                   (is_video and show_videos) or \
+                   (not is_image and not is_video and show_others):
+                    all_files_set.add(file_path.absolute())
+
+        all_files = [Path(f) for f in all_files_set]
 
         # Group files by size and modification time
         file_groups = defaultdict(list)
