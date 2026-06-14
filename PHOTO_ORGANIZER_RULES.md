@@ -14,6 +14,7 @@ photo_organizer/
 │   ├── exif_utils.py       # EXIF 추출
 │   ├── renamer.py          # 파일명 생성
 │   ├── grouper.py          # 이벤트 그룹핑
+│   ├── existing_structure.py # Target 기존 폴더 구조 스캔 및 날짜 범위 매핑 (최우선)
 │   ├── duplicate_detector.py
 │   ├── duplicate_handler.py
 │   └── config.py           # 설정 로더
@@ -106,9 +107,31 @@ grouping:
 
 ---
 
-## 🔍 4. 중복 파일 감지 규칙
+## 🎯 4. Target 기존 폴더 배치 규칙 (최우선)
 
-### 4.1 계층적 감지 (3단계)
+### 4.1 배치 우선순위
+
+1. **Target 기존 폴더 날짜 범위 매핑** (existing_structure.py)
+   - Target 폴더에 이미 규칙에 맞는 폴더가 있으면 장소는 무시하고 날짜만 추출
+   - 사진의 날짜가 기존 폴더의 날짜 범위에 해당하면 **그 폴더로 우선 배치**
+   - 이 로직이 **가장 높은 우선순위**
+
+2. GPS + 시간 기반 그룹핑 (grouper.py)
+3. 기타 필터링
+
+### 4.2 지원하는 폴더명 패턴
+
+- `20190628_서울_여행` → 2019-06-28
+- `20190628_0706_일본_여행` → 2019-06-28 ~ 2019-07-06
+- `20190628_20200101_독일_여행` → 2019-06-28 ~ 2020-01-01
+
+> 장소/포스트픽 부분은 무시하고 날짜 범위만 추출합니다.
+
+---
+
+## 🔍 5. 중복 파일 감지 규칙
+
+### 5.1 계층적 감지 (3단계)
 
 ```
 1단계: 파일 크기 비교
@@ -133,7 +156,7 @@ grouping:
 
 ---
 
-## ⚙️ 5. EXIF 추출 규칙
+## ⚙️ 6. EXIF 추출 규칙
 
 ### 5.1 우선순위
 
@@ -156,7 +179,7 @@ grouping:
 
 ---
 
-## 🚀 6. 정리 실행 규칙
+## 🚀 7. 정리 실행 규칙
 
 ### 6.1 동작 모드
 
@@ -187,7 +210,7 @@ Target/
 
 ---
 
-## 🛠️ 7. 설정 파일 (`config.yaml`) 구조
+## 🛠️ 8. 설정 파일 (`config.yaml`) 구조
 
 ```yaml
 paths:
@@ -213,7 +236,7 @@ extensions:
 
 ---
 
-## 📌 8. 주의사항 및 예외 처리
+## 📌 9. 주의사항 및 예외 처리
 
 | 상황 | 처리 방식 |
 |------|-----------|
@@ -225,7 +248,7 @@ extensions:
 
 ---
 
-## 🔄 9. 워크플로우 요약
+## 🔄 10. 워크플로우 요약
 
 ```
 1. SCAN: Source 폴더 스캔 → EXIF 추출 → PhotoMetadata 리스트 생성
@@ -237,16 +260,17 @@ extensions:
 
 ---
 
-## ✏️ 10. 사용자 커스터마이징 포인트
+## ✏️ 11. 사용자 커스터마이징 포인트
 
 | 항목 | 파일 | 수정 방법 |
 |------|------|-----------|
 | 파일명 형식 | `core/renamer.py` | `generate_new_filename()` |
 | 그룹핑 기준 | `core/grouper.py` | `group_photos_by_time()` |
+| Target 기존 폴더 매핑 | `core/existing_structure.py` | `scan_existing_folders()`, `group_photos_by_existing_structure()` |
 | EXIF 필드 | `core/exif_utils.py` | `extract_photo_metadata()` |
 | 설정값 | `config.yaml` | YAML 직접 편집 |
 
 ---
 
 **마지막 업데이트**: 2025-01-XX  
-**버전**: v1.0
+**버전**: v1.1 (existing_structure 추가)
