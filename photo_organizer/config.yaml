@@ -1,0 +1,28 @@
+﻿# Photo Organizer Configuration
+
+paths:
+  source: "G:/photo_incoming"
+  target: "G:/Photos/정리됨"
+
+grouping:
+  time_gap_hours: 18
+  default_event_name: "event"
+
+device_alias:
+  "Apple": "iPhone"
+  "Canon EOS": "Canon"
+  "NIKON": "Nikon"
+  "SONY": "Sony"
+  "FUJIFILM": "Fujifilm"
+
+duplicate:
+  use_partial_hash: true
+  use_perceptual_hash: false
+  action: "move_to_duplicates"
+
+naming:
+  format: "{date}_{time}_{idx}_{source}{ext}"
+
+automation:
+  interval_minutes: 30
+  dry_run: false
